@@ -10,6 +10,8 @@ import seaborn as sns
 scaler = joblib.load("scaler_magic.pkl")
 rf_model = joblib.load("rf_magic_model.pkl")
 xgb_model = joblib.load("xgb_magic_model.pkl")
+
+# hasil evaluasi model (data uji)
 metrics = {
     "rf": {
         "accuracy": 0.8867,
@@ -19,13 +21,16 @@ metrics = {
         ]
     },
     "xgb": {
-        "accuracy": 0.885,
+        "accuracy": 0.8850,
         "confusion_matrix": [
             [2337, 129],
             [307, 1031]
         ]
     }
 }
+
+# mapping label sesuai dataset
+label_map = {0: "Gamma", 1: "Hadron"}
 
 # ==============================
 # STREAMLIT CONFIG
@@ -88,7 +93,7 @@ if st.button("🔍 Prediksi"):
     # scaling
     input_scaled = scaler.transform(input_data)
 
-    # pilih model
+    # pilih model & metrik
     if model_choice == "Random Forest":
         model = rf_model
         acc = metrics["rf"]["accuracy"]
@@ -100,9 +105,10 @@ if st.button("🔍 Prediksi"):
 
     # prediksi
     prediction = model.predict(input_scaled)[0]
-    proba = model.predict_proba(input_scaled)[0][1]
+    label = label_map[prediction]
 
-    label = "Gamma" if prediction == 1 else "Hadron"
+    # confidence score (Gamma = class 0)
+    proba_gamma = model.predict_proba(input_scaled)[0][0]
 
     # ==============================
     # OUTPUT PREDIKSI
@@ -110,7 +116,7 @@ if st.button("🔍 Prediksi"):
     st.subheader("📌 Hasil Prediksi")
 
     st.success(f"Hasil Klasifikasi: **{label}**")
-    st.write(f"Confidence Gamma: **{proba:.2%}**")
+    st.write(f"Confidence Gamma: **{proba_gamma:.2%}**")
 
     # ==============================
     # INFORMASI PERFORMA MODEL
@@ -135,8 +141,8 @@ if st.button("🔍 Prediksi"):
         annot=True,
         fmt="d",
         cmap="Blues",
-        xticklabels=["Hadron", "Gamma"],
-        yticklabels=["Hadron", "Gamma"],
+        xticklabels=["Gamma", "Hadron"],
+        yticklabels=["Gamma", "Hadron"],
         ax=ax
     )
 
