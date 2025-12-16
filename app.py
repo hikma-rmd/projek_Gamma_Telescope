@@ -1,29 +1,54 @@
 import streamlit as st
 import numpy as np
-import pandas as pd
 import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.metrics import confusion_matrix
 
 # ==============================
-# LOAD MODEL & SCALER
+# LOAD MODEL, SCALER, METRICS
 # ==============================
 scaler = joblib.load("scaler_magic.pkl")
 rf_model = joblib.load("rf_magic_model.pkl")
 xgb_model = joblib.load("xgb_magic_model.pkl")
+metrics = {
+    "rf": {
+        "accuracy": 0.8867,
+        "confusion_matrix": [
+            [2330, 136],
+            [295, 1043]
+        ]
+    },
+    "xgb": {
+        "accuracy": 0.885,
+        "confusion_matrix": [
+            [2337, 129],
+            [307, 1031]
+        ]
+    }
+}
 
 # ==============================
 # STREAMLIT CONFIG
 # ==============================
-st.set_page_config(page_title="MAGIC Gamma Classification", layout="wide")
+st.set_page_config(
+    page_title="MAGIC Gamma Classification",
+    layout="wide"
+)
+
 st.title("🔭 MAGIC Gamma Telescope Classification")
-st.write("Aplikasi klasifikasi **Gamma vs Hadron** menggunakan Machine Learning")
+st.write(
+    """
+    Aplikasi ini digunakan untuk mengklasifikasikan **peristiwa partikel**
+    menjadi **Gamma** atau **Hadron** menggunakan model Machine Learning.
+    """
+)
 
 # ==============================
-# PILIH MODEL
+# SIDEBAR - PILIH MODEL
 # ==============================
-model_choice = st.selectbox(
+st.sidebar.header("⚙️ Pengaturan Model")
+
+model_choice = st.sidebar.selectbox(
     "Pilih Model",
     ("Random Forest", "XGBoost")
 )
@@ -31,33 +56,101 @@ model_choice = st.selectbox(
 # ==============================
 # INPUT FITUR
 # ==============================
-st.subheader("Masukkan Nilai Fitur")
+st.subheader("🧪 Masukkan Nilai Fitur")
 
-fLength = st.number_input("fLength", value=50.0)
-fWidth = st.number_input("fWidth", value=30.0)
-fSize = st.number_input("fSize", value=100.0)
-fConc = st.number_input("fConc", value=0.2)
-fConc1 = st.number_input("fConc1", value=0.1)
-fAsym = st.number_input("fAsym", value=0.0)
-fM3Long = st.number_input("fM3Long", value=0.0)
-fM3Trans = st.number_input("fM3Trans", value=0.0)
-fAlpha = st.number_input("fAlpha", value=30.0)
-fDist = st.number_input("fDist", value=100.0)
+col1, col2 = st.columns(2)
 
-input_data = np.array([[fLength, fWidth, fSize, fConc, fConc1,
-                        fAsym, fM3Long, fM3Trans, fAlpha, fDist]])
+with col1:
+    fLength = st.number_input("fLength", value=50.0)
+    fWidth = st.number_input("fWidth", value=30.0)
+    fSize = st.number_input("fSize", value=100.0)
+    fConc = st.number_input("fConc", value=0.2)
+    fConc1 = st.number_input("fConc1", value=0.1)
+
+with col2:
+    fAsym = st.number_input("fAsym", value=0.0)
+    fM3Long = st.number_input("fM3Long", value=0.0)
+    fM3Trans = st.number_input("fM3Trans", value=0.0)
+    fAlpha = st.number_input("fAlpha", value=30.0)
+    fDist = st.number_input("fDist", value=100.0)
+
+input_data = np.array([[
+    fLength, fWidth, fSize, fConc, fConc1,
+    fAsym, fM3Long, fM3Trans, fAlpha, fDist
+]])
 
 # ==============================
 # PREDIKSI
 # ==============================
+st.divider()
+
 if st.button("🔍 Prediksi"):
+    # scaling
     input_scaled = scaler.transform(input_data)
 
+    # pilih model
     if model_choice == "Random Forest":
-        prediction = rf_model.predict(input_scaled)[0]
+        model = rf_model
+        acc = metrics["rf"]["accuracy"]
+        cm = np.array(metrics["rf"]["confusion_matrix"])
     else:
-        prediction = xgb_model.predict(input_scaled)[0]
+        model = xgb_model
+        acc = metrics["xgb"]["accuracy"]
+        cm = np.array(metrics["xgb"]["confusion_matrix"])
+
+    # prediksi
+    prediction = model.predict(input_scaled)[0]
+    proba = model.predict_proba(input_scaled)[0][1]
 
     label = "Gamma" if prediction == 1 else "Hadron"
 
-    st.success(f"Hasil Prediksi: **{label}**")
+    # ==============================
+    # OUTPUT PREDIKSI
+    # ==============================
+    st.subheader("📌 Hasil Prediksi")
+
+    st.success(f"Hasil Klasifikasi: **{label}**")
+    st.write(f"Confidence Gamma: **{proba:.2%}**")
+
+    # ==============================
+    # INFORMASI PERFORMA MODEL
+    # ==============================
+    st.subheader("📊 Performa Model (Data Uji)")
+
+    st.info(
+        f"""
+        **Akurasi Model:** {acc:.2%}  
+        *(Akurasi dihitung dari data uji, bukan dari input yang baru diprediksi)*
+        """
+    )
+
+    # ==============================
+    # CONFUSION MATRIX
+    # ==============================
+    st.subheader("🧮 Confusion Matrix (Data Uji)")
+
+    fig, ax = plt.subplots(figsize=(5, 4))
+    sns.heatmap(
+        cm,
+        annot=True,
+        fmt="d",
+        cmap="Blues",
+        xticklabels=["Hadron", "Gamma"],
+        yticklabels=["Hadron", "Gamma"],
+        ax=ax
+    )
+
+    ax.set_xlabel("Predicted Label")
+    ax.set_ylabel("Actual Label")
+    ax.set_title(f"Confusion Matrix - {model_choice}")
+
+    st.pyplot(fig)
+
+# ==============================
+# FOOTER
+# ==============================
+st.divider()
+st.caption(
+    "Catatan: Akurasi dan confusion matrix ditampilkan sebagai hasil evaluasi model "
+    "berdasarkan data uji, bukan berdasarkan input pengguna."
+)
