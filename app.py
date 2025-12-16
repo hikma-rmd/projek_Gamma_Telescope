@@ -107,16 +107,12 @@ if st.button("🔍 Prediksi"):
     prediction = model.predict(input_scaled)[0]
     label = label_map[prediction]
 
-    # confidence score (Gamma = class 0)
-    proba_gamma = model.predict_proba(input_scaled)[0][0]
-
     # ==============================
     # OUTPUT PREDIKSI
     # ==============================
     st.subheader("📌 Hasil Prediksi")
 
     st.success(f"Hasil Klasifikasi: **{label}**")
-    st.write(f"Confidence Gamma: **{proba_gamma:.2%}**")
 
     # ==============================
     # INFORMASI PERFORMA MODEL
@@ -160,3 +156,4 @@ st.caption(
     "Catatan: Akurasi dan confusion matrix ditampilkan sebagai hasil evaluasi model "
     "berdasarkan data uji, bukan berdasarkan input pengguna."
 )
+
